@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    /* Code generation */
+    "target": "es6",
+    /* TODO emit esnext and set outFile=null (outDir instead) when we use webpack for bundling and transpiling to UMD */
+    "module": "es6",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es6"
+    ],
+    "allowJs": true,
+    /* Cannot use react-jsx without babel or some bundler */
+    "jsx": "react",
+    "esModuleInterop": true,
+
+    /* Type-checking */
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+
+    /* Module resolution */
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Output */
+    "composite": true,
+    "rootDir": "src/",
+    "outDir": "dist/",
+    //"outFile": "dist/index.js",
+    "declaration": true,
+  },
+
+  "include": ["src/**/*"],
+}
