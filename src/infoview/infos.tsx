@@ -96,7 +96,6 @@ export function Infos() {
     return (
     <>
     <div>
-        curLoc={curLoc.uri}:{curLoc.range.start.line}:{curLoc.range.start.character}
         {pinnedPoss.map(pos =>
             <Info pos={pos} isPinned={true} isCursor={false} onPin={unpin(pos)} />)}
         <Info pos={curPos} isPinned={false} isCursor={true} onPin={pin(curPos)} />

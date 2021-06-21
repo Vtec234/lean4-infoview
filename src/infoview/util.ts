@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DocumentUri, Position, Range } from 'vscode-languageserver-protocol';
+import { DocumentUri, Position, Range, TextDocumentPositionParams } from 'vscode-languageserver-protocol';
 
 import { Event } from './event';
 import { EditorContext } from './contexts';
@@ -11,6 +11,11 @@ export interface DocumentPosition extends Position {
 export namespace DocumentPosition {
   export function isEqual(p1: DocumentPosition, p2: DocumentPosition): boolean {
     return p1.uri === p2.uri && p1.line === p2.line && p1.character === p2.character;
+  }
+
+  export function toTdpp(p: DocumentPosition): TextDocumentPositionParams {
+    return { textDocument: { uri: p.uri },
+             position: p }
   }
 }
 

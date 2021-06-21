@@ -1,4 +1,4 @@
-import { Location, ShowDocumentParams, TextDocumentPositionParams } from "vscode-languageserver-protocol";
+import { Location, ShowDocumentParams } from "vscode-languageserver-protocol";
 
 import { Eventify } from "./event";
 import { DocumentPosition } from "./util";
@@ -40,12 +40,14 @@ export class EditorConnection {
     // return serverApi.insertText(`/-\n${text}\n-/\n`, 'relative');
   }
 
-  requestPlainGoal(pos: TextDocumentPositionParams): Promise<PlainGoal> {
-    return this.api.sendClientRequest('$/lean/plainGoal', pos);
+  requestPlainGoal(pos: DocumentPosition): Promise<PlainGoal> {
+    const params = DocumentPosition.toTdpp(pos);
+    return this.api.sendClientRequest('$/lean/plainGoal', params);
   }
 
-  requestPlainTermGoal(pos: TextDocumentPositionParams): Promise<PlainTermGoal> {
-    return this.api.sendClientRequest('$/lean/plainTermGoal', pos);
+  requestPlainTermGoal(pos: DocumentPosition): Promise<PlainTermGoal> {
+    const params = DocumentPosition.toTdpp(pos);
+    return this.api.sendClientRequest('$/lean/plainTermGoal', params);
   }
 
 }
