@@ -68,18 +68,18 @@ export function Infos() {
     const isPinned = (pinnedPoss: DocumentPosition[], pos: DocumentPosition) => {
         return pinnedPoss.some(p => DocumentPosition.isEqual(p, pos));
     }
-    const pin = (pos: DocumentPosition) => React.useCallback(() => {
+    const pin = React.useCallback((pos: DocumentPosition) => {
         setPinnedPoss(pinnedPoss => {
             if (isPinned(pinnedPoss, pos)) return pinnedPoss;
             return [ ...pinnedPoss, pos ];
         });
-    }, [pos]);
-    const unpin = (pos: DocumentPosition) => React.useCallback(() => {
+    }, []);
+    const unpin = React.useCallback((pos: DocumentPosition) => {
         setPinnedPoss(pinnedPoss => {
             if (!isPinned(pinnedPoss, pos)) return pinnedPoss;
             return pinnedPoss.filter(p => !DocumentPosition.isEqual(p, pos));
         });
-    }, [pos]);
+    }, []);
 
     // Toggle pin at current position when the editor requests it
     useEvent(ec.events.requestedAction, act => {
@@ -91,8 +91,8 @@ export function Infos() {
         );
     }, [curPos]);
 
-    let infoProps = pinnedPoss.map(pos => { return { pos, isPinned: true, isCursor: false, onPin: unpin(pos) }; });
-    infoProps.push({ pos: curPos, isPinned: false, isCursor: true, onPin: pin(curPos) });
+    let infoProps = pinnedPoss.map(pos => { return { pos, isPinned: true, isCursor: false, onPin: unpin }; });
+    infoProps.push({ pos: curPos, isPinned: false, isCursor: true, onPin: pin });
     infoProps = addUniqueKeys(infoProps, i => `${i.pos.uri}:${i.pos.line}:${i.pos.character}`);
 
     return (

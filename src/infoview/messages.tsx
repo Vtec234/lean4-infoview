@@ -1,8 +1,8 @@
 import * as React from 'react';
 import fastIsEqual from 'react-fast-compare';
-import { Location, Position, DocumentUri, DiagnosticSeverity } from 'vscode-languageserver-protocol';
+import { Location, DocumentUri, DiagnosticSeverity } from 'vscode-languageserver-protocol';
 
-import { basename, escapeHtml, colorizeMessage, RangeHelpers, usePausableState, useEvent, addUniqueKeys } from './util';
+import { basename, escapeHtml, colorizeMessage, RangeHelpers, usePausableState, useEvent, addUniqueKeys, DocumentPosition } from './util';
 import { LeanDiagnostic } from '../lspTypes';
 import { ClippyIcon, CopyToCommentIcon, GoToFileIcon, ContinueIcon, PauseIcon } from './svg_icons';
 import { ConfigContext, EditorContext, DiagnosticsContext } from './contexts';
@@ -106,7 +106,10 @@ export function AllMessages({uri}: { uri: DocumentUri }) {
     );
 }
 
-export function filterMessagesFor(allMessages: LeanDiagnostic[], pos: Position): LeanDiagnostic[] {
+export function useMessagesFor(pos: DocumentPosition): LeanDiagnostic[] {
     const config = React.useContext(ConfigContext);
-    return allMessages.filter((m) => RangeHelpers.contains(m.range, pos, config.infoViewAllErrorsOnLine));
+    const allDiags = React.useContext(DiagnosticsContext);
+    const diags = allDiags.get(pos.uri);
+    if (!diags) return [];
+    return diags.filter(d => RangeHelpers.contains(d.range, pos, config.infoViewAllErrorsOnLine));
 }
