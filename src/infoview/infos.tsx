@@ -2,7 +2,7 @@ import * as React from "react";
 import { DidChangeTextDocumentParams, DidCloseTextDocumentParams, Location, TextDocumentContentChangeEvent } from "vscode-languageserver-protocol";
 
 import { EditorContext } from "./contexts";
-import { DocumentPosition, PositionHelpers, useClientNotificationEffect, useClientNotificationState, useEvent } from "./util";
+import { addUniqueKeys, DocumentPosition, PositionHelpers, useClientNotificationEffect, useClientNotificationState, useEvent } from "./util";
 import { Info } from "./info";
 
 /** Manages and displays pinned infos, as well as info for the current location. */
@@ -59,7 +59,6 @@ export function Infos() {
         []
     );
 
-    // TODO try to optimize props so that just moving around does not re-render pinned infos
     const [curLoc, setCurLoc] = React.useState<Location>(ec.events.changedCursorLocation.current!);
     useEvent(ec.events.changedCursorLocation, setCurLoc, []);
 
@@ -69,18 +68,18 @@ export function Infos() {
     const isPinned = (pinnedPoss: DocumentPosition[], pos: DocumentPosition) => {
         return pinnedPoss.some(p => DocumentPosition.isEqual(p, pos));
     }
-    const pin = (pos: DocumentPosition) => () => {
+    const pin = (pos: DocumentPosition) => React.useCallback(() => {
         setPinnedPoss(pinnedPoss => {
             if (isPinned(pinnedPoss, pos)) return pinnedPoss;
             return [ ...pinnedPoss, pos ];
         });
-    };
-    const unpin = (pos: DocumentPosition) => () => {
+    }, [pos]);
+    const unpin = (pos: DocumentPosition) => React.useCallback(() => {
         setPinnedPoss(pinnedPoss => {
             if (!isPinned(pinnedPoss, pos)) return pinnedPoss;
             return pinnedPoss.filter(p => !DocumentPosition.isEqual(p, pos));
         });
-    };
+    }, [pos]);
 
     // Toggle pin at current position when the editor requests it
     useEvent(ec.events.requestedAction, act => {
@@ -92,13 +91,14 @@ export function Infos() {
         );
     }, [curPos]);
 
-    // TODO smash some `key`s into the `Info`s
+    let infoProps = pinnedPoss.map(pos => { return { pos, isPinned: true, isCursor: false, onPin: unpin(pos) }; });
+    infoProps.push({ pos: curPos, isPinned: false, isCursor: true, onPin: pin(curPos) });
+    infoProps = addUniqueKeys(infoProps, i => `${i.pos.uri}:${i.pos.line}:${i.pos.character}`);
+
     return (
     <>
     <div>
-        {pinnedPoss.map(pos =>
-            <Info pos={pos} isPinned={true} isCursor={false} onPin={unpin(pos)} />)}
-        <Info pos={curPos} isPinned={false} isCursor={true} onPin={pin(curPos)} />
+        {infoProps.map (ps => <Info {...ps} />)}
     </div>
     </>
     );

@@ -156,3 +156,18 @@ export function useLogState(): [string, (...msg: any[]) => void] {
 
   return [log, outputLog];
 }
+
+export type Keyed<T> = T & { key: string };
+
+/**
+ * Adds a unique `key` property to each element in `elems` starting from
+ * the (possibly non-injective) values of `getId`.
+ */
+export function addUniqueKeys<T>(elems: T[], getId: (el: T) => string): Keyed<T>[] {
+    const keys: { [key: string]: number } = {};
+    return elems.map(el => {
+        const id = getId(el);
+        keys[id] = (keys[id] || 0)+1;
+        return { key: `${id}:${keys[id]}`, ...el }
+    });
+}

@@ -2,7 +2,7 @@ import * as React from 'react';
 import fastIsEqual from 'react-fast-compare';
 import { Location, Position, DocumentUri, DiagnosticSeverity } from 'vscode-languageserver-protocol';
 
-import { basename, escapeHtml, colorizeMessage, RangeHelpers, usePausableState, useEvent } from './util';
+import { basename, escapeHtml, colorizeMessage, RangeHelpers, usePausableState, useEvent, addUniqueKeys } from './util';
 import { LeanDiagnostic } from '../lspTypes';
 import { ClippyIcon, CopyToCommentIcon, GoToFileIcon, ContinueIcon, PauseIcon } from './svg_icons';
 import { ConfigContext, EditorContext, DiagnosticsContext } from './contexts';
@@ -44,17 +44,15 @@ const MessageView = React.memo(({uri, diag}: MessageViewProps) => {
     );
 }, fastIsEqual);
 
-/** Add a unique `key` prop required by React to each message. */
-function addMessageKeys(uri: DocumentUri, messages: LeanDiagnostic[]): MessageViewProps[] {
-    const keys: { [key: string]: number } = {};
-    return messages
+function mkMessageViewProps(uri: DocumentUri, messages: LeanDiagnostic[]): MessageViewProps[] {
+    const views: MessageViewProps[] = messages
         .sort(({fullRange: {end: a}}, {fullRange: {end: b}}) =>
             a.line === b.line ? a.character - b.character : a.line - b.line
-        ).map((m) => {
-            const key0 = `${m.range.start.line}:${m.range.start.character}`;
-            keys[key0] = (keys[key0] || 0)+1;
-            return { key: `${key0}:${keys[key0]}`, uri, diag: m };
+        ).map(m => {
+            return { uri, diag: m };
         });
+
+    return addUniqueKeys(views, v => `${v.diag.range.start.line}:${v.diag.range.start.character}`);
 }
 
 export interface MessagesAtFileProps {
@@ -69,7 +67,7 @@ export function MessagesAtFile({uri, messages}: MessagesAtFileProps) {
 
     return (
     <div className="ml1">
-        {addMessageKeys(uri, messages).map(m => <MessageView {...m} />)}
+        {mkMessageViewProps(uri, messages).map(m => <MessageView {...m} />)}
     </div>
     );
 }
