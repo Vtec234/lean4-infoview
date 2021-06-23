@@ -5,7 +5,7 @@ import * as React from 'react';
 // NOTE: Unused.
 export function useIsVisible(): [(element: HTMLElement) => void, boolean] {
     const [isVisible,setIsVisible] = React.useState<boolean>(false);
-    const observer = React.useRef<IntersectionObserver>(null);
+    const observer = React.useRef<IntersectionObserver | null>(null);
     const node = React.useCallback<(element: HTMLElement) => void>(n => {
         if (observer.current) {
             observer.current.disconnect();
@@ -31,7 +31,7 @@ interface DetailsProps {
 
 export function Details({initiallyOpen, children: [summary, ...children], setOpenRef}: DetailsProps): JSX.Element {
     const [isOpen, setOpen] = React.useState<boolean>(initiallyOpen === undefined ? false : initiallyOpen);
-    const setupEventListener = React.useCallback((node?: HTMLDetailsElement) => {
+    const setupEventListener = React.useCallback((node: HTMLDetailsElement | null) => {
         if (node !== undefined && node !== null) {
             node.addEventListener('toggle', () => setOpen(node.open));
         }
