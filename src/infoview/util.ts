@@ -17,6 +17,10 @@ export namespace DocumentPosition {
     return { textDocument: { uri: p.uri },
              position: p }
   }
+
+  export function toString(p: DocumentPosition) {
+    return `${p.uri}:${p.line+1}:${p.character}`;
+  }
 }
 
 export namespace PositionHelpers {
@@ -126,16 +130,19 @@ export function useClientNotificationState<S, T>(method: string, initial: S, f: 
 }
 
 /**
- * Returns `[isPaused, setPaused, tPausable]` s.t. for as long as `isPaused` is set,
- * `tPausable` holds its initial value (the `t` passed before pausing) rather than updates
- * with changes to `t`. To pause child components, `startPaused` can be passed in their props
- * as the value of the parent's `isPaused`.
+ * Returns `[isPaused, setPaused, tRef, tPausable]` s.t.
+ * - `[isPaused, setPaused]` are the paused status state
+ * - for as long as `isPaused` is set, `tPausable` holds its initial value (the `t` passed before pausing)
+ *   rather than updates with changes to `t`.
+ * - `tRef` can be used to overwrite the paused state
+ * 
+ * To pause child components, `startPaused` can be passed in their props.
  */
-export function usePausableState<T>(startPaused: boolean, t: T): [boolean, React.Dispatch<React.SetStateAction<boolean>>, T] {
+export function usePausableState<T>(startPaused: boolean, t: T): [boolean, React.Dispatch<React.SetStateAction<boolean>>, T, React.MutableRefObject<T>] {
     const [isPaused, setPaused] = React.useState<boolean>(startPaused);
     const old = React.useRef<T>(t);
     if (!isPaused) old.current = t;
-    return [isPaused, setPaused, old.current];
+    return [isPaused, setPaused, old.current, old];
 }
 
 /**

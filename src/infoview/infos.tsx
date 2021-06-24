@@ -3,7 +3,7 @@ import { DidChangeTextDocumentParams, DidCloseTextDocumentParams, Location, Text
 
 import { EditorContext } from "./contexts";
 import { addUniqueKeys, DocumentPosition, PositionHelpers, useClientNotificationEffect, useClientNotificationState, useEvent } from "./util";
-import { Info } from "./info";
+import { Info, InfoProps } from "./info";
 
 /** Manages and displays pinned infos, as well as info for the current location. */
 export function Infos() {
@@ -89,11 +89,11 @@ export function Infos() {
                 pinnedPoss.filter(p => !DocumentPosition.isEqual(p, curPos)) :
                 [ ...pinnedPoss, curPos ]
         );
-    }, [curPos]);
+    }, [curPos.uri, curPos.line, curPos.character]);
 
-    let infoProps = pinnedPoss.map(pos => { return { pos, isPinned: true, isCursor: false, onPin: unpin }; });
-    infoProps.push({ pos: curPos, isPinned: false, isCursor: true, onPin: pin });
-    infoProps = addUniqueKeys(infoProps, i => `${i.pos.uri}:${i.pos.line}:${i.pos.character}`);
+    let infoProps: InfoProps[] = pinnedPoss.map(pos => { return { kind: 'pin', onPin: unpin, pos }; });
+    infoProps.push({ kind: 'cursor', onPin: pin });
+    infoProps = addUniqueKeys(infoProps, i => i.pos ? DocumentPosition.toString(i.pos) : 'cursor');
 
     return (
     <>

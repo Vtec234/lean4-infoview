@@ -49,5 +49,4 @@ export class EditorConnection {
     const params = DocumentPosition.toTdpp(pos);
     return this.api.sendClientRequest('$/lean/plainTermGoal', params);
   }
-
 }

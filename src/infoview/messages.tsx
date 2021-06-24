@@ -52,7 +52,7 @@ function mkMessageViewProps(uri: DocumentUri, messages: LeanDiagnostic[]): Messa
             return { uri, diag: m };
         });
 
-    return addUniqueKeys(views, v => `${v.diag.range.start.line}:${v.diag.range.start.character}`);
+    return addUniqueKeys(views, v => DocumentPosition.toString({uri: v.uri, ...v.diag.range.start}));
 }
 
 export interface MessagesAtFileProps {
@@ -73,14 +73,14 @@ export function MessagesAtFile({uri, messages}: MessagesAtFileProps) {
 }
 
 /** Displays all messages for the specified file. Can be paused. */
-export function AllMessages({uri}: { uri: DocumentUri }) {
+export function AllMessages({uri: uri0}: { uri: DocumentUri }) {
     const ec = React.useContext(EditorContext);
     const dc = React.useContext(DiagnosticsContext);
     const config = React.useContext(ConfigContext);
-    let diags = dc.get(uri);
-    if (!diags) diags = [];
+    let diags0 = dc.get(uri0);
+    if (!diags0) diags0 = [];
 
-    const [isPaused, setPaused, [uriVisible, diagsVisible]] = usePausableState(false, [uri, diags]);
+    const [isPaused, setPaused, [uri, diags], _] = usePausableState(false, [uri0, diags0]);
 
     const setOpenRef = React.useRef<React.Dispatch<React.SetStateAction<boolean>>>();
     useEvent(ec.events.requestedAction, act => {
@@ -92,7 +92,7 @@ export function AllMessages({uri}: { uri: DocumentUri }) {
     return (
     <Details setOpenRef={setOpenRef as any} initiallyOpen={!config.infoViewAutoOpenShowGoal}>
         <summary>
-            All Messages ({diagsVisible.length})
+            All Messages ({diags.length})
             <span className="fr">
                 <a className="link pointer mh2 dim"
                    onClick={e => { e.preventDefault(); setPaused(isPaused => !isPaused); }}
@@ -101,7 +101,7 @@ export function AllMessages({uri}: { uri: DocumentUri }) {
                 </a>
             </span>
         </summary>
-        <MessagesAtFile uri={uriVisible} messages={diagsVisible} />
+        <MessagesAtFile uri={uri} messages={diags} />
     </Details>
     );
 }

@@ -1,7 +1,8 @@
 import * as React from 'react';
+import { Location } from 'vscode-languageserver-protocol';
 
 import { getGoals, Goal, TermGoal } from './goal';
-import { basename, DocumentPosition, RangeHelpers, usePausableState, useServerNotificationState } from './util';
+import { basename, DocumentPosition, RangeHelpers, useEvent, usePausableState, useServerNotificationState } from './util';
 import { CopyToCommentIcon, PinnedIcon, PinIcon, ContinueIcon, PauseIcon, RefreshIcon, GoToFileIcon } from './svg_icons';
 import { Details } from './collapsing';
 import { PlainGoal, PlainTermGoal, LeanFileProgressParams, LeanDiagnostic } from '../lspTypes';
@@ -9,23 +10,25 @@ import { EditorContext } from './contexts';
 import { MessagesAtFile, useMessagesFor } from './messages';
 
 type InfoStatus = 'loading' | 'updating' | 'error' | 'ready';
+type InfoKind = 'cursor' | 'pin';
 
-interface Pinnable {
-    isPinned: boolean;
+interface InfoPinnable {
+    kind: InfoKind;
+    /** Takes an argument for caching reasons, but should only ever (un)pin itself. */
     onPin: (pos: DocumentPosition) => void;
 }
 
-interface InfoStatusBarProps extends Pinnable {
-    status: InfoStatus;
+interface InfoStatusBarProps extends InfoPinnable {
     pos: DocumentPosition;
+    status: InfoStatus;
     isPaused: boolean;
     copyGoalToComment?: () => void;
     setPaused: (p: boolean) => void;
-    triggerUpdate: () => void;
+    triggerUpdate: () => Promise<void>;
 }
 
 export function InfoStatusBar(props: InfoStatusBarProps) {
-    const { status, pos, isPinned, isPaused, onPin, copyGoalToComment, setPaused, triggerUpdate } = props;
+    const { kind, onPin, status, pos, isPaused, copyGoalToComment, setPaused, triggerUpdate } = props;
 
     const ec = React.useContext(EditorContext);
 
@@ -37,6 +40,7 @@ export function InfoStatusBar(props: InfoStatusBarProps) {
     }
     const statusColor = statusColTable[status];
     const locationString = `${basename(pos.uri)}:${pos.line+1}:${pos.character}`;
+    const isPinned = kind === 'pin';
 
     return (
     <summary style={{transition: 'color 0.5s ease'}} className={'mv2 ' + statusColor}>
@@ -45,62 +49,82 @@ export function InfoStatusBar(props: InfoStatusBarProps) {
         {!isPinned && isPaused && ' (paused)'}
         {isPinned && isPaused && ' (pinned and paused)'}
         <span className="fr">
-            {copyGoalToComment && <a className="link pointer mh2 dim" title="copy state to comment" onClick={e => {e.preventDefault(); copyGoalToComment(); }}><CopyToCommentIcon/></a>}
-            {isPinned && <a className={'link pointer mh2 dim '} onClick={e => { e.preventDefault(); void ec.revealPosition(pos); }} title="reveal file location"><GoToFileIcon/></a>}
-            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); onPin(pos); }} title={isPinned ? 'unpin' : 'pin'}>{isPinned ? <PinnedIcon/> : <PinIcon/>}</a>
-            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); setPaused(!isPaused); }} title={isPaused ? 'continue updating' : 'pause updating'}>{isPaused ? <ContinueIcon/> : <PauseIcon/>}</a>
-            { !isPaused && <a className={'link pointer mh2 dim'} onClick={e => { e.preventDefault(); triggerUpdate(); }} title="update"><RefreshIcon/></a> }
+            {copyGoalToComment &&
+                <a className="link pointer mh2 dim" title="copy state to comment" onClick={e => { e.preventDefault(); copyGoalToComment(); }}>
+                    <CopyToCommentIcon/>
+                </a>}
+            {isPinned &&
+                <a className={'link pointer mh2 dim '} onClick={e => { e.preventDefault(); void ec.revealPosition(pos); }} title="reveal file location">
+                    <GoToFileIcon/>
+                </a>}
+            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); onPin(pos); }} title={isPinned ? 'unpin' : 'pin'}>
+                {isPinned ? <PinnedIcon/> : <PinIcon/>}
+            </a>
+            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); setPaused(!isPaused); }} title={isPaused ? 'continue updating' : 'pause updating'}>
+                {isPaused ? <ContinueIcon/> : <PauseIcon/>}
+            </a>
+            <a className={'link pointer mh2 dim'} onClick={e => { e.preventDefault(); void triggerUpdate(); }} title="update">
+                <RefreshIcon/>
+            </a>
         </span>
     </summary>
     );
 }
 
-interface InfoProps extends Pinnable {
+interface InfoDisplayProps extends InfoPinnable {
     pos: DocumentPosition;
-    isCursor: boolean;
-}
-
-interface InfoDisplayProps extends InfoProps {
     status: InfoStatus;
     messages: LeanDiagnostic[];
     goal?: PlainGoal;
     termGoal?: PlainTermGoal;
     error?: string;
-    triggerUpdate: () => void;
+    triggerUpdate: () => Promise<void>;
 }
 
 /** Displays goal state and messages. Can be paused. */
 export function InfoDisplay(props0: InfoDisplayProps) {
-    // We don't want to pause the value of this callback
-    const triggerUpdate = props0.triggerUpdate;
-    const [isPaused, setPaused, props] = usePausableState(false, props0);
+    // Used to update the paused state once if a display update is triggered
+    const [shouldRefresh, setShouldRefresh] = React.useState<boolean>(false);
+    const [isPaused, setPaused, props, propsRef] = usePausableState(false, props0);
+    if (shouldRefresh) {
+        propsRef.current = props0;
+        setShouldRefresh(false);
+    }
+    const triggerDisplayUpdate = async () => {
+        await props0.triggerUpdate();
+        setShouldRefresh(true);
+    };
 
-    const {pos, status, messages, goal, termGoal, error} = props;
+    const {kind, pos, status, messages, goal, termGoal, error} = props;
 
     const ec = React.useContext(EditorContext);
-    let copyGoalToComment = undefined;
+    let copyGoalToComment: (() => void) | undefined = undefined;
     if (goal) copyGoalToComment = () => { void ec.copyToComment(getGoals(goal).join('\n\n')); }
     
-
     // If we are the cursor infoview, then we should subscribe to
     // some commands from the extension
-    //useEvent(copyToCommentEvent, () => isCursor && copyGoalToComment(), [isCursor, goal]);
-    //useEvent(pauseEvent, () => isCursor && setPaused(true), [isCursor]);
-    //useEvent(continueEvent, () => isCursor && setPaused(false), [isCursor]);
-    //useEvent(toggleUpdating, () => isCursor && setPaused(!isCurrentlyPaused.current), [isCursor]);
-    // TODO: updating of paused views
-    // const forceUpdate = () => !isCurrentlyPaused.current && stateRef.current.triggerUpdate();
+    const isCursor = kind === 'cursor';
+    useEvent(ec.events.requestedAction, act => {
+        if (!isCursor) return;
+        if (act.kind !== 'copyToComment') return;
+        copyGoalToComment && copyGoalToComment();
+    }, [goal]);
+    useEvent(ec.events.requestedAction, act => {
+        if (!isCursor) return;
+        if (act.kind !== 'togglePaused') return;
+        setPaused(isPaused => !isPaused);
+    });
 
     const nothingToShow = !error && !goal && !termGoal && messages.length === 0;
 
     return (
     <Details initiallyOpen>
-        <InfoStatusBar {...props} triggerUpdate={triggerUpdate} isPaused={isPaused} setPaused={setPaused} copyGoalToComment={copyGoalToComment} />
+        <InfoStatusBar {...props} triggerUpdate={triggerDisplayUpdate} isPaused={isPaused} setPaused={setPaused} copyGoalToComment={copyGoalToComment} />
         <div className="ml1">
             {status === 'error' && error &&
                 <div className="error">
                     Error updating: {error}.
-                    <a className="link pointer dim" onClick={e => { e.preventDefault(); triggerUpdate(); }}>Try again.</a>
+                    <a className="link pointer dim" onClick={e => { e.preventDefault(); triggerDisplayUpdate(); }}>Try again.</a>
                 </div>}
             {status !== 'error' && goal && 
                 <Details initiallyOpen>
@@ -128,9 +152,9 @@ export function InfoDisplay(props0: InfoDisplayProps) {
                     </div>
                 </Details>}
             {nothingToShow && (
-                status === 'ready' ? 'No info found.' :
-                isPaused ? <span>Updating is paused. <a className="link pointer dim" onClick={e => { e.preventDefault(); triggerUpdate(); }}>Refresh</a> or <a className="link pointer dim" onClick={e => { e.preventDefault(); setPaused(false) }}>resume updating</a> to see information</span> :
-                'Loading...')}
+                isPaused ?
+                    <span>Updating is paused. <a className="link pointer dim" onClick={e => { e.preventDefault(); triggerDisplayUpdate(); }}>Refresh</a> or <a className="link pointer dim" onClick={e => { e.preventDefault(); setPaused(false); }}>resume updating</a> to see information.</span> :
+                    status === 'ready' ? 'No info found.' : 'Loading...')}
         </div>
     </Details>
     );
@@ -145,42 +169,59 @@ function isLoading(ts: LeanFileProgressParams, p: DocumentPosition): boolean {
  * - but only `ms` milliseconds after the first call
  * - and not more often than once every `ms` milliseconds
  */
-function delayedThrottled(ms: number, cb: () => void): () => void {
+function useDelayedThrottled(ms: number, cb: () => Promise<void>): () => Promise<void> {
     const waiting = React.useRef<boolean>(false);
-    const callbackRef = React.useRef<() => void>();
+    const callbackRef = React.useRef<() => Promise<void>>();
     callbackRef.current = cb;
-    return () => {
+    return async () => {
         if (!waiting.current) {
             waiting.current = true;
-            setTimeout(() => {
-                waiting.current = false;
-                callbackRef.current!();
-            }, ms);
+            let promise = new Promise((resolved, rejected) => {
+                setTimeout(() => {
+                    waiting.current = false;
+                    callbackRef.current!().then(resolved, rejected);
+                }, ms);
+            });
+            await promise;
         }
     };
 }
 
+/**
+ * Note: in the cursor view, we have to keep the cursor position as part of the component state
+ * to avoid flickering when the cursor moved. Otherwise, the component is re-initialised and the
+ * goal states reset to `undefined` on cursor moves.
+ */
+export type InfoProps = InfoPinnable & { pos?: DocumentPosition };
+
 /** Fetches info from the server and renders an {@link InfoDisplay}. */
 export function Info(props: InfoProps) {
-    const {pos} = props;
-
     const ec = React.useContext(EditorContext);
 
+    // Note: `kind` may not change throughout the lifetime of an `Info` component,
+    // otherwise the hooks will differ.
+    const pos = props.kind === 'pin' ?
+        props.pos! :
+        (() => {
+            const [curLoc, setCurLoc] = React.useState<Location>(ec.events.changedCursorLocation.current!);
+            useEvent(ec.events.changedCursorLocation, setCurLoc, []);
+            return { uri: curLoc.uri, ...curLoc.range.start };
+        })();
+
     const [status, setStatus] = React.useState<InfoStatus>('loading');
-    const [serverIsProcessing, _] = useServerNotificationState(
-        '$/lean/fileProgress',
-        false,
-        (_, params: LeanFileProgressParams) => isLoading(params, pos),
-        [pos]
-    );
-
-    const messages = useMessagesFor(pos);
-
     const [goal, setGoal] = React.useState<PlainGoal>();
     const [termGoal, setTermGoal] = React.useState<PlainTermGoal>();
     const [error, setError] = React.useState<string>();
 
-    const triggerUpdate = delayedThrottled(serverIsProcessing ? 500 : 50, async () => {
+    const messages = useMessagesFor(pos);
+    const [serverIsProcessing, _] = useServerNotificationState(
+        '$/lean/fileProgress',
+        false,
+        (_, params: LeanFileProgressParams) => isLoading(params, pos),
+        [pos.uri, pos.line, pos.character]
+    );
+
+    const triggerUpdate = useDelayedThrottled(serverIsProcessing ? 500 : 50, async () => {
         setStatus('updating');
 
         // Start both goal requests before awaiting them.
@@ -218,29 +259,9 @@ export function Info(props: InfoProps) {
         setStatus('ready');
     });
 
-    React.useEffect(triggerUpdate, [pos, serverIsProcessing]);
-    // useEvent(serverRestarted, triggerUpdate);
-    // useEvent(global_server.error, triggerUpdate);
+    React.useEffect(() => void triggerUpdate(), [pos.uri, pos.line, pos.character, serverIsProcessing]);
 
     return (
-    <InfoDisplay {...props} status={status} messages={messages} goal={goal} termGoal={termGoal} error={error} triggerUpdate={triggerUpdate} />
+    <InfoDisplay {...props} pos={pos} status={status} messages={messages} goal={goal} termGoal={termGoal} error={error} triggerUpdate={triggerUpdate} />
     );
-}
-
-/** Fetches info from the server and renders an {@link InfoDisplay}. */
-export function InfoWorking(props: InfoProps) {
-    const ec = React.useContext(EditorContext);
-    const [goal, setGoal] = React.useState<PlainGoal | undefined>(undefined);
-    React.useEffect(() => {
-        ec.requestPlainGoal(props.pos)
-            .then(goal => setGoal(goal),
-                  err => console.log(`'$/lean/plainGoal' err: ${err}`));
-    }, [props.pos]);
-
-    return <Details initiallyOpen>
-        <InfoStatusBar {...props} status='updating' pos={props.pos} isPinned={false} isPaused={false} onPin={()=>{}} setPaused={b=>{}} triggerUpdate={()=>{}} />
-        <div className="ml1">
-            {goal && <Goal plainGoal={goal} /> }
-        </div>
-    </Details>;
 }
