@@ -40,12 +40,12 @@ export class EditorConnection {
     // return serverApi.insertText(`/-\n${text}\n-/\n`, 'relative');
   }
 
-  requestPlainGoal(pos: DocumentPosition): Promise<PlainGoal> {
+  requestPlainGoal(pos: DocumentPosition): Promise<PlainGoal | undefined> {
     const params = DocumentPosition.toTdpp(pos);
     return this.api.sendClientRequest('$/lean/plainGoal', params);
   }
 
-  requestPlainTermGoal(pos: DocumentPosition): Promise<PlainTermGoal> {
+  requestPlainTermGoal(pos: DocumentPosition): Promise<PlainTermGoal | undefined> {
     const params = DocumentPosition.toTdpp(pos);
     return this.api.sendClientRequest('$/lean/plainTermGoal', params);
   }
