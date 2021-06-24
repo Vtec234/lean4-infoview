@@ -2,8 +2,10 @@ import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { DocumentUri, PublishDiagnosticsParams } from 'vscode-languageserver-protocol';
 
-import './tachyons.css' // stylesheet assumed by Lean widgets. See https://tachyons.io/ for documentation
-import './index.css'
+import 'tachyons/css/tachyons.css';
+import 'vscode-codicons/dist/codicon.css';
+import './index.css';
+
 import { Infos } from './infos';
 import { AllMessages } from './messages';
 import { useEvent, useServerNotificationState } from './util';

@@ -3,7 +3,6 @@ import { Location } from 'vscode-languageserver-protocol';
 
 import { getGoals, Goal, TermGoal } from './goal';
 import { basename, DocumentPosition, RangeHelpers, useEvent, usePausableState, useServerNotificationState } from './util';
-import { CopyToCommentIcon, PinnedIcon, PinIcon, ContinueIcon, PauseIcon, RefreshIcon, GoToFileIcon } from './svg_icons';
 import { Details } from './collapsing';
 import { PlainGoal, PlainTermGoal, LeanFileProgressParams, LeanDiagnostic } from '../lspTypes';
 import { EditorContext } from './contexts';
@@ -50,22 +49,22 @@ export function InfoStatusBar(props: InfoStatusBarProps) {
         {isPinned && isPaused && ' (pinned and paused)'}
         <span className="fr">
             {copyGoalToComment &&
-                <a className="link pointer mh2 dim" title="copy state to comment" onClick={e => { e.preventDefault(); copyGoalToComment(); }}>
-                    <CopyToCommentIcon/>
-                </a>}
+                <a className="link pointer mh2 dim codicon codicon-quote" 
+                   onClick={e => { e.preventDefault(); copyGoalToComment(); }}
+                   title="copy state to comment" />}
             {isPinned &&
-                <a className={'link pointer mh2 dim '} onClick={e => { e.preventDefault(); void ec.revealPosition(pos); }} title="reveal file location">
-                    <GoToFileIcon/>
-                </a>}
-            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); onPin(pos); }} title={isPinned ? 'unpin' : 'pin'}>
-                {isPinned ? <PinnedIcon/> : <PinIcon/>}
-            </a>
-            <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); setPaused(!isPaused); }} title={isPaused ? 'continue updating' : 'pause updating'}>
-                {isPaused ? <ContinueIcon/> : <PauseIcon/>}
-            </a>
-            <a className={'link pointer mh2 dim'} onClick={e => { e.preventDefault(); void triggerUpdate(); }} title="update">
-                <RefreshIcon/>
-            </a>
+                <a className="link pointer mh2 dim codicon codicon-go-to-file"
+                   onClick={e => { e.preventDefault(); void ec.revealPosition(pos); }} 
+                   title="reveal file location" />}
+            <a className={"link pointer mh2 dim codicon " + (isPinned ? "codicon-pinned" : "codicon-pin")}
+                onClick={e => { e.preventDefault(); onPin(pos); }}
+                title={isPinned ? 'unpin' : 'pin'} />
+            <a className={"link pointer mh2 dim codicon " + (isPaused ? "codicon-debug-continue" : "codicon-debug-pause")}
+               onClick={e => { e.preventDefault(); setPaused(!isPaused); }}
+               title={isPaused ? 'continue updating' : 'pause updating'} />
+            <a className="link pointer mh2 dim codicon codicon-refresh"
+               onClick={e => { e.preventDefault(); void triggerUpdate(); }}
+               title="update"/>
         </span>
     </summary>
     );

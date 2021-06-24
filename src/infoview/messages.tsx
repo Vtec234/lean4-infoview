@@ -4,7 +4,6 @@ import { Location, DocumentUri, DiagnosticSeverity } from 'vscode-languageserver
 
 import { basename, escapeHtml, colorizeMessage, RangeHelpers, usePausableState, useEvent, addUniqueKeys, DocumentPosition } from './util';
 import { LeanDiagnostic } from '../lspTypes';
-import { ClippyIcon, CopyToCommentIcon, GoToFileIcon, ContinueIcon, PauseIcon } from './svg_icons';
 import { ConfigContext, EditorContext, DiagnosticsContext } from './contexts';
 import { Details } from './collapsing';
 
@@ -32,9 +31,15 @@ const MessageView = React.memo(({uri, diag}: MessageViewProps) => {
     <details open>
         <summary className={severityClass + ' mv2 pointer'}>{title}
             <span className="fr">
-                <a className="link pointer mh2 dim" onClick={e => { e.preventDefault(); ec.revealLocation(loc); }} title="reveal file location"><GoToFileIcon/></a>
-                <a className="link pointer mh2 dim" title="copy message to comment" onClick={e => {e.preventDefault(); ec.copyToComment(diag.message)}}><CopyToCommentIcon/></a>
-                <a className="link pointer mh2 dim" title="copy message to clipboard" onClick={e => {e.preventDefault(); void ec.api.copyToClipboard(diag.message)}}><ClippyIcon/></a>
+                <a className="link pointer mh2 dim codicon codicon-go-to-file"
+                   onClick={e => { e.preventDefault(); ec.revealLocation(loc); }}
+                   title="reveal file location"></a>
+                <a className="link pointer mh2 dim codicon codicon-quote" 
+                   onClick={e => {e.preventDefault(); ec.copyToComment(diag.message)}}
+                   title="copy message to comment"></a>
+                <a className="link pointer mh2 dim codicon codicon-clippy"
+                   onClick={e => {e.preventDefault(); void ec.api.copyToClipboard(diag.message)}}
+                   title="copy message to clipboard"></a>
             </span>
         </summary>
         <div className="ml1">
@@ -94,10 +99,9 @@ export function AllMessages({uri: uri0}: { uri: DocumentUri }) {
         <summary>
             All Messages ({diags.length})
             <span className="fr">
-                <a className="link pointer mh2 dim"
+                <a className={"link pointer mh2 dim codicon " + (isPaused ? "codicon-debug-continue" : "codicon-debug-pause")}
                    onClick={e => { e.preventDefault(); setPaused(isPaused => !isPaused); }}
                    title={isPaused ? 'continue updating' : 'pause updating'}>
-                   {isPaused ? <ContinueIcon/> : <PauseIcon/>}
                 </a>
             </span>
         </summary>

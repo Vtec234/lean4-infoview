@@ -2,7 +2,6 @@
   "compilerOptions": {
     /* Code generation */
     "target": "es6",
-    /* TODO emit esnext and set outFile=null (outDir instead) when we use webpack for bundling and transpiling to UMD */
     "module": "es6",
     "lib": [
       "dom",
@@ -10,8 +9,7 @@
       "es6"
     ],
     "allowJs": true,
-    /* Cannot use react-jsx without babel or some bundler */
-    "jsx": "react",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
 
     /* Type-checking */
@@ -28,7 +26,6 @@
     "composite": true,
     "rootDir": "src/",
     "outDir": "dist/",
-    //"outFile": "dist/index.js",
     "declaration": true,
   },
 
